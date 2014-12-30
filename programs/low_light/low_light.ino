@@ -82,18 +82,21 @@ void loop() {
       }
       break;
     case MODE_NORMAL:
-      if(hb.button_just_released()) {
-        if(hb.button_released_time() < 2*BUTTON_SHORT) {
+      if(hb.button_pressed()) {
+        if(hb.button_pressed_time() > BUTTON_SHORT) {
           mode = MODE_HIGH;
-          hb.set_light(CURRENT_LEVEL, HIGH_LEVEL, NOW);          
-        } else {
+          hb.set_light(CURRENT_LEVEL, HIGH_LEVEL, NOW);
+        }
+      } else if(hb.button_just_released()) {
+        if(hb.button_pressed_time() < BUTTON_SHORT) {
           shutdown();
         }
       }
       break;
     case MODE_HIGH:
       if(hb.button_just_released()) {
-        shutdown();
+        mode = MODE_NORMAL;
+        hb.set_light(CURRENT_LEVEL, NORMAL_LEVEL, NOW);
       }
       break;
   }

@@ -10,7 +10,7 @@ Modes:
 
 * Low: Keep the button pressed, release to turn off
 * Normal: Click to turn on, click to turn off
-* High: Double-Click to turn on, click to turn off
+* High: In Normal mode, keep the button pressed
 
 Battery status:
 ---------------

@@ -30,22 +30,44 @@ For more information, please refer to <http://unlicense.org/>
 #define BUILD_HACK
 #include <hexbright.h>
 
-#define BUTTON_SHORT 300           // Duration of short button press in ms
+// Duration of short button press in ms
+#define BUTTON_SHORT 300
 
-#define LOW_LEVEL 50               // Low intensity
-#define NORMAL_LEVEL 350           // Normal intensity
-#define HIGH_LEVEL MAX_LEVEL       // High intensity
+// Low intensity
+#define LOW_LEVEL 50
+// Normal intensity
+#define NORMAL_LEVEL 350
+// High intensity
+#define HIGH_LEVEL MAX_LEVEL
 
-#define LOW_POWER_INTERVAL 15000   // Time between low power warnings in ms
+// Sensitivity for the strobe "shake"
+#define STROBE_ACCL_THRESH 150
+// Minimum strobe interval in ms (83 ms = 12 Hz)
+#define STROBE_LOWER 83
+// Maximum strobe interval in ms (125 ms = 8 Hz)
+#define STROBE_UPPER 125
+// Duration of strobe in ms
+#define STROBE_DURATION 20
+
+// Time between low power warnings in ms
+#define LOW_POWER_INTERVAL 15000
+
+// Do not modify code below unless you know what you are doing
+
+#define LIGHT_AXIS 1
+#define ACCL_SAMPLE_RATE 8
 
 #define MODE_OFF 0
 #define MODE_LOW 1
 #define MODE_NORMAL 2
 #define MODE_HIGH 3
+#define MODE_STROBE_PENDING 4
+#define MODE_STROBE 5
 
 hexbright hb;
 
 int mode = 0;
+unsigned long timer = 0;
 
 void setup() {
   hb = hexbright();
@@ -80,6 +102,23 @@ void loop() {
           shutdown();
         }
       }
+      if(timer == 0) {
+        timer = millis() + ACCL_SAMPLE_RATE * 4;
+      } else if(timer < millis()) {
+        timer = millis() + ACCL_SAMPLE_RATE;
+        int minmax[] = {hb.vector(0)[1], hb.vector(0)[LIGHT_AXIS]};
+        for(short i = 1; i < 4; i++) {
+          if(hb.vector(i)[LIGHT_AXIS] < minmax[0]) {
+            minmax[0] = hb.vector(i)[LIGHT_AXIS];
+          } else if(hb.vector(i)[LIGHT_AXIS] > minmax[1]) {
+            minmax[1] = hb.vector(i)[LIGHT_AXIS];
+          }
+        }
+        if(minmax[1] - minmax[0] > STROBE_ACCL_THRESH) {
+          timer = millis() + 2 * BUTTON_SHORT;
+          mode = MODE_STROBE_PENDING;
+        }
+      }
       break;
     case MODE_NORMAL:
       if(hb.button_pressed()) {
@@ -97,6 +136,22 @@ void loop() {
       if(hb.button_just_released()) {
         mode = MODE_NORMAL;
         hb.set_light(CURRENT_LEVEL, NORMAL_LEVEL, NOW);
+      }
+      break;
+    case MODE_STROBE_PENDING:
+      if(hb.button_just_released()) {
+        mode = MODE_STROBE;
+      } else if(timer < millis()) {
+        mode = MODE_LOW;
+      }
+      break;
+    case MODE_STROBE:
+      if(timer < millis()) {
+        timer = millis() + random(STROBE_LOWER, STROBE_UPPER);
+        hb.set_light(MAX_LEVEL, 0, STROBE_DURATION);
+      }
+      if(hb.button_just_released()) {
+        shutdown();
       }
       break;
   }
